@@ -44,7 +44,7 @@ def generate_matrix(ticket_key: str, ticket_text: str) -> TestMatrix:
 
     message = client.messages.create(
         model=MODEL,
-        max_tokens=4096,
+        max_tokens=8192,
         system=SYSTEM_PROMPT,
         messages=[
             {
