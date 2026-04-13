@@ -37,9 +37,12 @@ FAKE_RESPONSE = {
 }
 
 
-def _make_mock_client():
+def _make_mock_client(wrap_in_fences=False):
+    text = json.dumps(FAKE_RESPONSE)
+    if wrap_in_fences:
+        text = f"```json\n{text}\n```"
     mock_message = MagicMock()
-    mock_message.content = [MagicMock(text=json.dumps(FAKE_RESPONSE))]
+    mock_message.content = [MagicMock(text=text)]
 
     mock_client = MagicMock()
     mock_client.messages.create.return_value = mock_message
@@ -95,3 +98,12 @@ def test_generate_matrix_passes_ticket_text_to_claude(monkeypatch):
     call_args = mock_client.messages.create.call_args
     user_message = call_args.kwargs["messages"][0]["content"]
     assert "Checkout flow" in user_message
+
+
+def test_generate_matrix_handles_markdown_fences(monkeypatch):
+    """Claude sometimes wraps JSON in ```json fences — must be stripped before parsing."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    with patch("src.matrix_generator.anthropic.Anthropic", return_value=_make_mock_client(wrap_in_fences=True)):
+        matrix = generate_matrix("PROJ-1", TICKET_TEXT)
+
+    assert len(matrix.test_cases) == 3

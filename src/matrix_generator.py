@@ -50,7 +50,13 @@ def generate_matrix(ticket_key: str, ticket_text: str) -> TestMatrix:
         ],
     )
 
-    raw = message.content[0].text
+    raw = message.content[0].text.strip()
+    # Claude sometimes wraps output in ```json ... ``` despite instructions
+    if raw.startswith("```"):
+        raw = raw.split("```", 2)[1]          # drop opening fence
+        if raw.startswith("json"):
+            raw = raw[4:]                      # drop language tag
+        raw = raw.rsplit("```", 1)[0].strip()  # drop closing fence
     data = json.loads(raw)
 
     test_cases = [TestCase(**tc) for tc in data["test_cases"]]
