@@ -15,14 +15,28 @@ def cli():
 
 
 @cli.command()
-@click.option("--ticket", required=True, help="Jira ticket key, e.g. PROJECT-123")
+@click.option("--ticket", default=None, help="Jira ticket key, e.g. PROJECT-123")
+@click.option("--from-file", "from_file", default=None, help="Path to a saved Jira ticket JSON (skips Jira API call)")
 @click.option("--output", default="matrix.json", show_default=True, help="Output file path")
-def generate(ticket: str, output: str):
-    """Generate a test matrix from a Jira ticket and save it as JSON."""
-    click.echo(f"Fetching {ticket} from Jira...")
-    jira = JiraClient()
-    raw = jira.get_ticket(ticket)
-    text = jira.extract_text(raw)
+def generate(ticket: str | None, from_file: str | None, output: str):
+    """Generate a test matrix from a Jira ticket and save it as JSON.
+
+    Either --ticket (live Jira fetch) or --from-file (local JSON) is required.
+    """
+    if not ticket and not from_file:
+        raise click.UsageError("Provide either --ticket or --from-file.")
+
+    if from_file:
+        click.echo(f"Reading ticket from {from_file}...")
+        with open(from_file) as f:
+            raw = json.load(f)
+        ticket = ticket or raw.get("key", "LOCAL")
+        text = JiraClient.__new__(JiraClient).extract_text(raw)
+    else:
+        click.echo(f"Fetching {ticket} from Jira...")
+        jira = JiraClient()
+        raw = jira.get_ticket(ticket)
+        text = jira.extract_text(raw)
 
     click.echo("Generating test matrix with Claude...")
     matrix = generate_matrix(ticket, text)

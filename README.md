@@ -32,7 +32,7 @@ git clone <your-repo-url>
 cd qa-test-matrix-gen
 python -m venv .venv
 source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements.txt --index-url https://pypi.org/simple/
 ```
 
 Copy and fill in your credentials:
@@ -59,22 +59,30 @@ Edit `.env` with your values:
 
 ## Usage
 
-### Generate a test matrix from a Jira ticket
+### Option A — Generate from a live Jira ticket (requires VPN + Jira credentials in `.env`)
 
 ```bash
 python -m src.cli generate --ticket PROJECT-123
 ```
 
+### Option B — Generate from a local file (no VPN or Jira credentials needed)
+
+Use this to try the tool quickly, or when you are not connected to your corporate VPN:
+
+```bash
+python -m src.cli generate --from-file tests/fixtures/sample_ticket.json
+```
+
+You can also save your own ticket locally and use it as input:
+
+```bash
+python -m src.cli generate --from-file path/to/my_ticket.json --output my_matrix.json
+```
+
 ### Export the matrix to Xray
 
 ```bash
-python -m src.cli export --ticket PROJECT-123 --format xray
-```
-
-### Generate SQL test data fixtures
-
-```bash
-python -m src.cli fixtures --ticket PROJECT-123 --table users
+python -m src.cli export --ticket PROJECT-123 --project MYPROJECT
 ```
 
 ---
