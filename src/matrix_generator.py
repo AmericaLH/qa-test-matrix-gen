@@ -18,7 +18,11 @@ For each test case, produce:
 - preconditions: list of setup steps
 - steps: list of test steps
 - expected_result: what success looks like
-- sql_fixture: a suggested PostgreSQL INSERT or seed query to set up test data (or null if not applicable)
+- glean_prompt: a short natural-language search prompt the QA engineer can paste into
+  Glean to find the internal documentation, schema, or existing test data needed to
+  set up this test case. Focus on what data needs to exist. Example:
+  "users table schema and seed data for inactive account"
+  Set to null if no specific data setup is needed.
 
 Cover ALL of these dimensions:
 1. Happy paths — standard successful flows

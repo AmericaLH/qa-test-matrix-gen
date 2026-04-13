@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 import click
 from dotenv import load_dotenv
 
@@ -17,8 +18,8 @@ def cli():
 @cli.command()
 @click.option("--ticket", default=None, help="Jira ticket key, e.g. PROJECT-123")
 @click.option("--from-file", "from_file", default=None, help="Path to a saved Jira ticket JSON (skips Jira API call)")
-@click.option("--output", default="matrix.json", show_default=True, help="Output file path")
-def generate(ticket: str | None, from_file: str | None, output: str):
+@click.option("--output-dir", "output_dir", default="test_cases", show_default=True, help="Folder where the matrix JSON will be saved")
+def generate(ticket: str | None, from_file: str | None, output_dir: str):
     """Generate a test matrix from a Jira ticket and save it as JSON.
 
     Either --ticket (live Jira fetch) or --from-file (local JSON) is required.
@@ -41,10 +42,13 @@ def generate(ticket: str | None, from_file: str | None, output: str):
     click.echo("Generating test matrix with Claude...")
     matrix = generate_matrix(ticket, text)
 
-    with open(output, "w") as f:
-        f.write(matrix.model_dump_json(indent=2))
+    out_dir = Path(output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_file = out_dir / f"{ticket}.json"
 
-    click.echo(f"Generated {len(matrix.test_cases)} test cases -> {output}")
+    out_file.write_text(matrix.model_dump_json(indent=2))
+
+    click.echo(f"Generated {len(matrix.test_cases)} test cases -> {out_file}")
     for type_name, cases in matrix.by_type.items():
         click.echo(f"  {type_name.value}: {len(cases)}")
 
@@ -52,12 +56,13 @@ def generate(ticket: str | None, from_file: str | None, output: str):
 @cli.command()
 @click.option("--ticket", required=True, help="Jira ticket key")
 @click.option("--project", required=True, help="Jira project key for Xray import")
-@click.option("--input", "input_file", default="matrix.json", show_default=True)
-def export(ticket: str, project: str, input_file: str):
+@click.option("--input", "input_file", default=None, help="Path to matrix JSON. Defaults to test_cases/{ticket}.json")
+def export(ticket: str, project: str, input_file: str | None):
     """Export a saved test matrix JSON to Xray."""
     from .models import TestMatrix
 
-    with open(input_file) as f:
+    path = Path(input_file) if input_file else Path("test_cases") / f"{ticket}.json"
+    with open(path) as f:
         matrix = TestMatrix.model_validate_json(f.read())
 
     click.echo(f"Exporting {len(matrix.test_cases)} test cases to Xray project {project}...")

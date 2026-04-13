@@ -19,7 +19,7 @@ def _sample_matrix() -> TestMatrix:
                 preconditions=["User exists"],
                 steps=["Go to login", "Enter credentials"],
                 expected_result="Logged in",
-                sql_fixture="INSERT INTO users (email) VALUES ('a@b.com');",
+                glean_prompt="users table schema and seed data for login",
             ),
             TestCase(
                 id="TC-002",
@@ -45,7 +45,7 @@ def test_export_calls_xray_import_endpoint(monkeypatch, httpx_mock: HTTPXMock):
     assert result["issueCount"] == 2
 
 
-def test_export_includes_sql_fixture_in_description(monkeypatch, httpx_mock: HTTPXMock):
+def test_export_includes_glean_prompt_in_description(monkeypatch, httpx_mock: HTTPXMock):
     monkeypatch.setenv("XRAY_CLIENT_ID", "client123")
     monkeypatch.setenv("XRAY_CLIENT_SECRET", "secret456")
 
@@ -64,7 +64,7 @@ def test_export_includes_sql_fixture_in_description(monkeypatch, httpx_mock: HTT
     export_to_xray(_sample_matrix(), "DEMO")
 
     happy_path_test = captured["body"][0]
-    assert "INSERT" in happy_path_test["description"]
+    assert "Glean prompt" in happy_path_test["description"]
 
 
 def test_export_summary_includes_type(monkeypatch, httpx_mock: HTTPXMock):

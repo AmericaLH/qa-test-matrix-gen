@@ -38,7 +38,7 @@ def export_to_xray(matrix: TestMatrix, project_key: str) -> dict:
                     + "\n\n**Steps:**\n"
                     + "\n".join(f"{i+1}. {s}" for i, s in enumerate(tc.steps))
                     + f"\n\n**Expected Result:** {tc.expected_result}"
-                    + (f"\n\n**SQL Fixture:**\n```sql\n{tc.sql_fixture}\n```" if tc.sql_fixture else "")
+                    + (f"\n\n**Glean prompt:** `{tc.glean_prompt}`" if tc.glean_prompt else "")
                 ),
                 "labels": [tc.type.value, matrix.ticket_key],
                 "project": {"key": project_key},

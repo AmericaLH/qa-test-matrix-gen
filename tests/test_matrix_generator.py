@@ -13,7 +13,7 @@ FAKE_RESPONSE = {
             "preconditions": ["User account exists"],
             "steps": ["Open login page", "Enter valid credentials", "Click Login"],
             "expected_result": "User is redirected to dashboard",
-            "sql_fixture": "INSERT INTO users (email) VALUES ('test@example.com');",
+            "glean_prompt": "users table schema and seed data for valid account",
         },
         {
             "id": "TC-002",
@@ -22,7 +22,7 @@ FAKE_RESPONSE = {
             "preconditions": ["User account exists"],
             "steps": ["Open login page", "Enter wrong password", "Click Login"],
             "expected_result": "Error message is shown",
-            "sql_fixture": None,
+            "glean_prompt": None,
         },
         {
             "id": "TC-003",
@@ -31,7 +31,7 @@ FAKE_RESPONSE = {
             "preconditions": [],
             "steps": ["Open login page", "Press Tab repeatedly"],
             "expected_result": "All fields are reachable via keyboard",
-            "sql_fixture": None,
+            "glean_prompt": None,
         },
     ]
 }
@@ -79,14 +79,14 @@ def test_generate_matrix_types_are_parsed(monkeypatch):
     assert TestType.ACCESSIBILITY in types
 
 
-def test_generate_matrix_sql_fixture_present_when_provided(monkeypatch):
+def test_generate_matrix_glean_prompt_present_when_provided(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
     with patch("src.matrix_generator.anthropic.Anthropic", return_value=_make_mock_client()):
         matrix = generate_matrix("PROJ-1", TICKET_TEXT)
 
     happy = next(tc for tc in matrix.test_cases if tc.type == TestType.HAPPY_PATH)
-    assert happy.sql_fixture is not None
-    assert "INSERT" in happy.sql_fixture
+    assert happy.glean_prompt is not None
+    assert "users" in happy.glean_prompt
 
 
 def test_generate_matrix_passes_ticket_text_to_claude(monkeypatch):

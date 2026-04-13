@@ -9,10 +9,10 @@ def test_testcase_fields():
         preconditions=["User account exists"],
         steps=["Open login page", "Enter valid email and password", "Click Login"],
         expected_result="User is redirected to dashboard",
-        sql_fixture="INSERT INTO users (email, password_hash) VALUES ('test@example.com', 'hashed');",
+        glean_prompt="INSERT INTO users (email, password_hash) VALUES ('test@example.com', 'hashed');",
     )
     assert tc.type == TestType.HAPPY_PATH
-    assert tc.sql_fixture is not None
+    assert tc.glean_prompt is not None
 
 
 def test_testmatrix_by_type():
@@ -40,7 +40,7 @@ def test_testmatrix_by_type():
     assert len(grouped[TestType.NEGATIVE]) == 1
 
 
-def test_testcase_sql_fixture_optional():
+def test_testcase_glean_prompt_optional():
     tc = TestCase(
         id="TC-003",
         title="Accessibility check",
@@ -49,4 +49,4 @@ def test_testcase_sql_fixture_optional():
         steps=["Tab through form"],
         expected_result="All elements are focusable",
     )
-    assert tc.sql_fixture is None
+    assert tc.glean_prompt is None

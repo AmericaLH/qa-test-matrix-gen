@@ -18,7 +18,7 @@ class TestCase(BaseModel):
     preconditions: list[str]
     steps: list[str]
     expected_result: str
-    sql_fixture: str | None = None  # suggested INSERT / seed SQL
+    glean_prompt: str | None = None  # prompt to search in Glean for test data setup
 
 
 class TestMatrix(BaseModel):
