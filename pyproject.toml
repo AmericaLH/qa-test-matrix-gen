@@ -1,0 +1,12 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Disable class-based test collection — prevents pytest from warning about
+# Pydantic models named TestCase / TestMatrix / TestType
+python_classes = []
+
+[tool.ruff]
+line-length = 100
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["src/__init__.py"]

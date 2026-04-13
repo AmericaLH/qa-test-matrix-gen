@@ -1,0 +1,21 @@
+{
+  "key": "DEMO-42",
+  "fields": {
+    "summary": "Login form: add 'Remember me' checkbox",
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "As a user, I want a 'Remember me' checkbox on the login form so that my session persists for 30 days without re-entering credentials."
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

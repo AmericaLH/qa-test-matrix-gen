@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint
+        run: ruff check src tests
+
+      - name: Run tests
+        run: pytest --cov=src --cov-report=term-missing --cov-fail-under=60
+
+  # AI-assisted step: generate a test matrix for a sample ticket using Claude
+  # Runs only on push to main (requires ANTHROPIC_API_KEY secret to be set)
+  ai-test-review:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate sample test matrix (AI step)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Jira creds not needed — uses local fixture file
+        run: |
+          python - <<'EOF'
+          import json
+          from pathlib import Path
+          from src.jira_client import _adf_to_text
+          from src.matrix_generator import generate_matrix
+
+          fixture = json.loads(Path("tests/fixtures/sample_ticket.json").read_text())
+          summary = fixture["fields"]["summary"]
+          description = _adf_to_text(fixture["fields"].get("description") or {})
+          text = f"Summary: {summary}\n\nDescription:\n{description}"
+
+          matrix = generate_matrix("DEMO-42", text)
+          print(f"Generated {len(matrix.test_cases)} test cases")
+          for t, cases in matrix.by_type.items():
+              print(f"  {t.value}: {len(cases)}")
+          EOF
