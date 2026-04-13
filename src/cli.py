@@ -85,8 +85,6 @@ def generate(ticket: str | None, from_file: str | None, output_dir: str, automat
     out_file.write_text(matrix.model_dump_json(indent=2))
 
     click.echo(f"Generated {len(matrix.test_cases)} {label} -> {out_file}")
-    for type_name, cases in matrix.by_type.items():
-        click.echo(f"  {type_name.value}: {len(cases)}")
 
 
 @cli.command()
@@ -133,8 +131,6 @@ def checklist(ticket: str | None, from_file: str | None, output_dir: str, automa
     out_file.write_text(result.to_text())
 
     click.echo(f"Generated {len(result.items)} checks -> {out_file}")
-    for item in result.items:
-        click.echo(f"  - {item}")
 
 
 @cli.command()
