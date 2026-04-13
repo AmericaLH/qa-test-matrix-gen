@@ -21,6 +21,16 @@ class TestCase(BaseModel):
     glean_prompt: str | None = None  # prompt to search in Glean for test data setup
 
 
+class Checklist(BaseModel):
+    ticket_key: str
+    ticket_summary: str
+    items: list[str]   # one entry per Jira checklist row
+
+    def to_text(self) -> str:
+        """Plain text ready to paste into Jira's Checklist field."""
+        return "\n".join(self.items)
+
+
 class TestMatrix(BaseModel):
     ticket_key: str
     ticket_summary: str

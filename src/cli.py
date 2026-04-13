@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 from .jira_client import JiraClient
 from .matrix_generator import generate_matrix
+from .checklist_generator import generate_checklist
 from .xray_exporter import export_to_xray
 
 load_dotenv()
@@ -51,6 +52,47 @@ def generate(ticket: str | None, from_file: str | None, output_dir: str):
     click.echo(f"Generated {len(matrix.test_cases)} test cases -> {out_file}")
     for type_name, cases in matrix.by_type.items():
         click.echo(f"  {type_name.value}: {len(cases)}")
+
+
+@cli.command()
+@click.option("--ticket", default=None, help="Jira ticket key, e.g. PROJECT-123")
+@click.option("--from-file", "from_file", default=None, help="Path to a saved Jira ticket JSON (skips Jira API call)")
+@click.option("--output-dir", "output_dir", default="checklists", show_default=True, help="Folder where the checklist will be saved")
+def checklist(ticket: str | None, from_file: str | None, output_dir: str):
+    """Generate a flat checklist from a Jira ticket, ready to paste into Jira.
+
+    Either --ticket (live Jira fetch) or --from-file (local JSON) is required.
+
+    The output is a plain .txt file — one check per line — that you can copy
+    directly into Jira's Checklist field.
+    """
+    if not ticket and not from_file:
+        raise click.UsageError("Provide either --ticket or --from-file.")
+
+    if from_file:
+        click.echo(f"Reading ticket from {from_file}...")
+        with open(from_file) as f:
+            raw = json.load(f)
+        ticket = ticket or raw.get("key", "LOCAL")
+        text = JiraClient.__new__(JiraClient).extract_text(raw)
+    else:
+        click.echo(f"Fetching {ticket} from Jira...")
+        jira = JiraClient()
+        raw = jira.get_ticket(ticket)
+        text = jira.extract_text(raw)
+
+    click.echo("Generating checklist with Claude...")
+    result = generate_checklist(ticket, text)
+
+    out_dir = Path(output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_file = out_dir / f"{ticket}.txt"
+
+    out_file.write_text(result.to_text())
+
+    click.echo(f"Generated {len(result.items)} checks -> {out_file}")
+    for item in result.items:
+        click.echo(f"  - {item}")
 
 
 @cli.command()

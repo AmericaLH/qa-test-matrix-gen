@@ -14,8 +14,9 @@ build/
 .coverage
 htmlcov/
 
-# Generated test matrices
+# Generated output — keep company ticket data off git
 test_cases/
+checklists/
 
 # OS
 .DS_Store

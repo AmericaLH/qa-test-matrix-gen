@@ -1,6 +1,8 @@
 # QA Test Matrix Generator
 
-An AI-powered assistant that ingests a Jira ticket and auto-derives a complete test matrix: happy paths, negative paths, boundary conditions, data permutations, non-functional checks (accessibility, performance), and concrete SQL setups for reproducible test data.
+An AI-powered assistant that ingests a Jira ticket and auto-derives:
+- A **test matrix** — structured test cases covering happy paths, negative paths, boundary conditions, data permutations, accessibility, and performance
+- A **checklist** — a flat list of test checks ready to paste directly into Jira's Checklist feature
 
 Built as a capstone for the [Enroute Coding Assistants Course](../Enroute-Coding-Assistants-Course/).
 
@@ -10,9 +12,9 @@ Built as a capstone for the [Enroute Coding Assistants Course](../Enroute-Coding
 
 Manual test design from requirements is time-consuming and inconsistent. This tool uses Claude (Anthropic SDK) to:
 1. Parse acceptance criteria and user stories from a Jira ticket
-2. Generate a structured test matrix covering all test dimensions
+2. Generate a structured test matrix or a quick checklist
 3. Export test cases directly to Xray (Jira test management)
-4. Suggest PostgreSQL fixtures for reproducible test data
+4. Suggest Glean search prompts to find the test data setup you need internally
 
 ---
 
@@ -88,6 +90,36 @@ python -m src.cli export --ticket PROJECT-123 --project MYPROJECT
 
 ---
 
+## Checklist command
+
+Generates a flat list of test checks — one per line — ready to paste into Jira's Checklist feature.
+
+### From a live Jira ticket
+
+```bash
+python -m src.cli checklist --ticket PROJECT-123
+```
+
+### From a local file (no VPN needed)
+
+```bash
+python -m src.cli checklist --from-file tests/fixtures/sample_ticket.json
+```
+
+Files are saved in `checklists/PROJECT-123.txt`. Open it, select all, and paste directly into the Jira Checklist field.
+
+Example output file:
+```
+User can log in with valid email and password
+Error message appears when password is incorrect
+Form shows validation error when email is empty
+Remember me checkbox is visible and clickable
+Session persists for 30 days when remember me is checked
+All form fields are reachable via keyboard
+```
+
+---
+
 ## Architecture
 
 ```
@@ -95,10 +127,10 @@ qa-test-matrix-gen/
 ├── src/
 │   ├── cli.py               # Entry point (Click CLI)
 │   ├── jira_client.py       # Jira REST API wrapper
-│   ├── matrix_generator.py  # Core AI logic (Anthropic SDK)
-│   ├── xray_exporter.py     # Xray REST API export
-│   ├── sql_fixtures.py      # PostgreSQL fixture generator
-│   └── models.py            # Data models (TestCase, TestMatrix)
+│   ├── matrix_generator.py    # AI logic for full test matrix
+│   ├── checklist_generator.py # AI logic for flat Jira checklist
+│   ├── xray_exporter.py       # Xray REST API export
+│   └── models.py              # Data models (TestCase, TestMatrix, Checklist)
 ├── tests/
 │   ├── fixtures/            # Sample Jira ticket JSON for tests
 │   ├── test_matrix_generator.py
