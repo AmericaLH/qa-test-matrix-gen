@@ -20,6 +20,12 @@ For each test case, produce:
   set up this test case. Focus on what data needs to exist. Example:
   "users table schema and seed data for inactive account"
   Set to null if no specific data setup is needed.
+- automation: assess whether this test case is a good candidate for automation:
+    - suitable: true if the test is deterministic, repeatable, and does not require
+      human judgment. false for exploratory, visual, or subjective checks.
+    - reason: one sentence explaining the assessment
+    - suggested_tool: the most appropriate tool (e.g. Playwright, pytest, Postman,
+      RestAssured) or null if not suitable
 
 Cover ALL of these dimensions:
 1. Happy paths — standard successful flows
@@ -35,8 +41,18 @@ Return ONLY valid JSON matching this schema (no markdown fences):
 }"""
 
 
-def generate_matrix(ticket_key: str, ticket_text: str) -> TestMatrix:
-    """Generate a test matrix from a Jira ticket using the best available model."""
+def generate_matrix(
+    ticket_key: str,
+    ticket_text: str,
+    automatable_only: bool = False,
+) -> TestMatrix:
+    """Generate a test matrix from a Jira ticket using the best available model.
+
+    Args:
+        ticket_key: Jira ticket key, e.g. PROJECT-123
+        ticket_text: Plain text extracted from the Jira ticket
+        automatable_only: When True, omit test cases that are not suitable for automation
+    """
     raw = call_model(
         system=SYSTEM_PROMPT,
         user_content=f"Generate a test matrix for this Jira ticket:\n\n{ticket_text}",
@@ -46,6 +62,12 @@ def generate_matrix(ticket_key: str, ticket_text: str) -> TestMatrix:
     raw = _strip_fences(raw)
     data = json.loads(raw)
     test_cases = [TestCase(**tc) for tc in data["test_cases"]]
+
+    if automatable_only:
+        test_cases = [
+            tc for tc in test_cases
+            if tc.automation and tc.automation.suitable
+        ]
 
     summary = ticket_text.splitlines()[0].replace("Summary: ", "").strip()
     return TestMatrix(ticket_key=ticket_key, ticket_summary=summary, test_cases=test_cases)

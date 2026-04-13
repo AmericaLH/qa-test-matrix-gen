@@ -119,6 +119,25 @@ python -m src.cli generate --from-file tests/fixtures/sample_ticket.json
 
 Output is saved to `test_cases/PROJECT-123.json`.
 
+**Automation candidates only** — filter out low-impact and manual-only test cases:
+```bash
+python -m src.cli generate --ticket PROJECT-123 --automatable
+python -m src.cli generate --from-file tests/fixtures/sample_ticket.json --automatable
+```
+
+Output is saved to `test_cases/PROJECT-123-automatable.json`. Each test case includes an `automation` block:
+```json
+{
+  "id": "TC-001",
+  "title": "...",
+  "automation": {
+    "suitable": true,
+    "reason": "Deterministic input/output — no human judgment required",
+    "suggested_tool": "Playwright"
+  }
+}
+```
+
 ### Generate a checklist
 
 Produces a flat `.txt` file — one check per line — ready to paste into Jira's Checklist field.
@@ -144,6 +163,14 @@ Remember me checkbox is visible and clickable
 Session persists for 30 days when remember me is checked
 All form fields are reachable via keyboard
 ```
+
+**Automation candidates only** — omit visual, exploratory, and low-impact checks:
+```bash
+python -m src.cli checklist --ticket PROJECT-123 --automatable
+python -m src.cli checklist --from-file tests/fixtures/sample_ticket.json --automatable
+```
+
+Output is saved to `checklists/PROJECT-123-automatable.txt`.
 
 ### Export a test matrix to Xray
 

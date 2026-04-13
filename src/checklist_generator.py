@@ -24,11 +24,43 @@ Return ONLY valid JSON (no markdown fences):
   "items": ["check one", "check two", ...]
 }"""
 
+AUTOMATABLE_SYSTEM_PROMPT = """You are a senior QA engineer and automation specialist. Given a Jira ticket, generate a checklist containing ONLY test checks that are suitable for automated testing.
 
-def generate_checklist(ticket_key: str, ticket_text: str) -> Checklist:
-    """Generate a flat checklist from a Jira ticket using the best available model."""
+Include checks that are:
+- Deterministic — same input always produces same output
+- Repeatable — can run reliably in a CI pipeline without human intervention
+- High or medium impact — cover critical paths, common errors, or boundary conditions
+
+Omit checks that:
+- Require human visual judgment (e.g. layout looks correct, colours match)
+- Are exploratory or session-based
+- Have low impact or are unlikely to catch real regressions
+- Depend on external systems that cannot be mocked or controlled
+
+Each item must be written as a concrete, automatable action. Mention the expected outcome.
+
+Return ONLY valid JSON (no markdown fences):
+{
+  "items": ["check one", "check two", ...]
+}"""
+
+
+def generate_checklist(
+    ticket_key: str,
+    ticket_text: str,
+    automatable_only: bool = False,
+) -> Checklist:
+    """Generate a flat checklist from a Jira ticket using the best available model.
+
+    Args:
+        ticket_key: Jira ticket key, e.g. PROJECT-123
+        ticket_text: Plain text extracted from the Jira ticket
+        automatable_only: When True, only include checks suitable for automation
+    """
+    system = AUTOMATABLE_SYSTEM_PROMPT if automatable_only else SYSTEM_PROMPT
+
     raw = call_model(
-        system=SYSTEM_PROMPT,
+        system=system,
         user_content=f"Generate a test checklist for this Jira ticket:\n\n{ticket_text}",
         max_tokens=1024,
     )

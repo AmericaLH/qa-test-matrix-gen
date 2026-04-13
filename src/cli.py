@@ -48,10 +48,15 @@ def cli():
 @click.option("--ticket", default=None, help="Jira ticket key, e.g. PROJECT-123")
 @click.option("--from-file", "from_file", default=None, help="Path to a saved Jira ticket JSON (skips Jira API call)")
 @click.option("--output-dir", "output_dir", default="test_cases", show_default=True, help="Folder where the matrix JSON will be saved")
-def generate(ticket: str | None, from_file: str | None, output_dir: str):
+@click.option("--automatable", is_flag=True, default=False, help="Only include test cases suitable for automation; omit low-impact or manual-only checks")
+def generate(ticket: str | None, from_file: str | None, output_dir: str, automatable: bool):
     """Generate a test matrix from a Jira ticket and save it as JSON.
 
     Either --ticket (live Jira fetch) or --from-file (local JSON) is required.
+
+    Use --automatable to filter results down to automation candidates only:
+
+        python -m src.cli generate --ticket PROJECT-123 --automatable
     """
     if not ticket and not from_file:
         raise click.UsageError("Provide either --ticket or --from-file.")
@@ -68,16 +73,18 @@ def generate(ticket: str | None, from_file: str | None, output_dir: str):
         raw = jira.get_ticket(ticket)
         text = jira.extract_text(raw)
 
-    click.echo("Generating test matrix with Claude...")
-    matrix = _handle_anthropic_errors(generate_matrix)(ticket, text)
+    label = "automatable test cases" if automatable else "test matrix"
+    click.echo(f"Generating {label} with Claude...")
+    matrix = _handle_anthropic_errors(generate_matrix)(ticket, text, automatable_only=automatable)
 
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_file = out_dir / f"{ticket}.json"
+    suffix = "-automatable" if automatable else ""
+    out_file = out_dir / f"{ticket}{suffix}.json"
 
     out_file.write_text(matrix.model_dump_json(indent=2))
 
-    click.echo(f"Generated {len(matrix.test_cases)} test cases -> {out_file}")
+    click.echo(f"Generated {len(matrix.test_cases)} {label} -> {out_file}")
     for type_name, cases in matrix.by_type.items():
         click.echo(f"  {type_name.value}: {len(cases)}")
 
@@ -86,13 +93,18 @@ def generate(ticket: str | None, from_file: str | None, output_dir: str):
 @click.option("--ticket", default=None, help="Jira ticket key, e.g. PROJECT-123")
 @click.option("--from-file", "from_file", default=None, help="Path to a saved Jira ticket JSON (skips Jira API call)")
 @click.option("--output-dir", "output_dir", default="checklists", show_default=True, help="Folder where the checklist will be saved")
-def checklist(ticket: str | None, from_file: str | None, output_dir: str):
+@click.option("--automatable", is_flag=True, default=False, help="Only include checks suitable for automation; omit visual, exploratory, or low-impact items")
+def checklist(ticket: str | None, from_file: str | None, output_dir: str, automatable: bool):
     """Generate a flat checklist from a Jira ticket, ready to paste into Jira.
 
     Either --ticket (live Jira fetch) or --from-file (local JSON) is required.
 
     The output is a plain .txt file — one check per line — that you can copy
     directly into Jira's Checklist field.
+
+    Use --automatable to get only automation-ready checks:
+
+        python -m src.cli checklist --ticket PROJECT-123 --automatable
     """
     if not ticket and not from_file:
         raise click.UsageError("Provide either --ticket or --from-file.")
@@ -109,12 +121,14 @@ def checklist(ticket: str | None, from_file: str | None, output_dir: str):
         raw = jira.get_ticket(ticket)
         text = jira.extract_text(raw)
 
-    click.echo("Generating checklist with Claude...")
-    result = _handle_anthropic_errors(generate_checklist)(ticket, text)
+    label = "automatable checklist" if automatable else "checklist"
+    click.echo(f"Generating {label} with Claude...")
+    result = _handle_anthropic_errors(generate_checklist)(ticket, text, automatable_only=automatable)
 
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_file = out_dir / f"{ticket}.txt"
+    suffix = "-automatable" if automatable else ""
+    out_file = out_dir / f"{ticket}{suffix}.txt"
 
     out_file.write_text(result.to_text())
 

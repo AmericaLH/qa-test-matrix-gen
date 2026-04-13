@@ -11,6 +11,12 @@ class TestType(str, Enum):
     PERFORMANCE = "performance"
 
 
+class AutomationAssessment(BaseModel):
+    suitable: bool          # whether this test case is a good candidate for automation
+    reason: str             # short explanation
+    suggested_tool: str | None = None  # e.g. Playwright, pytest, Postman
+
+
 class TestCase(BaseModel):
     id: str                        # e.g. TC-001
     title: str
@@ -19,6 +25,7 @@ class TestCase(BaseModel):
     steps: list[str]
     expected_result: str
     glean_prompt: str | None = None  # prompt to search in Glean for test data setup
+    automation: AutomationAssessment | None = None
 
 
 class Checklist(BaseModel):
