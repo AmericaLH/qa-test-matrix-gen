@@ -1,5 +1,5 @@
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from src.matrix_generator import generate_matrix
 from src.models import TestType
@@ -36,74 +36,53 @@ FAKE_RESPONSE = {
     ]
 }
 
-
-def _make_mock_client(wrap_in_fences=False):
-    text = json.dumps(FAKE_RESPONSE)
-    if wrap_in_fences:
-        text = f"```json\n{text}\n```"
-    mock_message = MagicMock()
-    mock_message.content = [MagicMock(text=text)]
-
-    mock_client = MagicMock()
-    mock_client.messages.create.return_value = mock_message
-    return mock_client
-
-
 TICKET_TEXT = "Summary: Login feature\n\nDescription:\nAllow users to log in."
 
 
-def test_generate_matrix_returns_correct_ticket_key(monkeypatch):
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
-    with patch("src.matrix_generator.anthropic.Anthropic", return_value=_make_mock_client()):
-        matrix = generate_matrix("PROJ-1", TICKET_TEXT)
+def _fake_call_model(wrap_in_fences=False):
+    text = json.dumps(FAKE_RESPONSE)
+    if wrap_in_fences:
+        text = f"```json\n{text}\n```"
+    return text
 
+
+def test_generate_matrix_returns_correct_ticket_key():
+    with patch("src.matrix_generator.call_model", return_value=_fake_call_model()):
+        matrix = generate_matrix("PROJ-1", TICKET_TEXT)
     assert matrix.ticket_key == "PROJ-1"
 
 
-def test_generate_matrix_test_case_count(monkeypatch):
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
-    with patch("src.matrix_generator.anthropic.Anthropic", return_value=_make_mock_client()):
+def test_generate_matrix_test_case_count():
+    with patch("src.matrix_generator.call_model", return_value=_fake_call_model()):
         matrix = generate_matrix("PROJ-1", TICKET_TEXT)
-
     assert len(matrix.test_cases) == 3
 
 
-def test_generate_matrix_types_are_parsed(monkeypatch):
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
-    with patch("src.matrix_generator.anthropic.Anthropic", return_value=_make_mock_client()):
+def test_generate_matrix_types_are_parsed():
+    with patch("src.matrix_generator.call_model", return_value=_fake_call_model()):
         matrix = generate_matrix("PROJ-1", TICKET_TEXT)
-
     types = {tc.type for tc in matrix.test_cases}
     assert TestType.HAPPY_PATH in types
     assert TestType.NEGATIVE in types
     assert TestType.ACCESSIBILITY in types
 
 
-def test_generate_matrix_glean_prompt_present_when_provided(monkeypatch):
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
-    with patch("src.matrix_generator.anthropic.Anthropic", return_value=_make_mock_client()):
+def test_generate_matrix_glean_prompt_present_when_provided():
+    with patch("src.matrix_generator.call_model", return_value=_fake_call_model()):
         matrix = generate_matrix("PROJ-1", TICKET_TEXT)
-
     happy = next(tc for tc in matrix.test_cases if tc.type == TestType.HAPPY_PATH)
     assert happy.glean_prompt is not None
     assert "users" in happy.glean_prompt
 
 
-def test_generate_matrix_passes_ticket_text_to_claude(monkeypatch):
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
-    mock_client = _make_mock_client()
-    with patch("src.matrix_generator.anthropic.Anthropic", return_value=mock_client):
+def test_generate_matrix_passes_ticket_text_to_model():
+    with patch("src.matrix_generator.call_model", return_value=_fake_call_model()) as mock_call:
         generate_matrix("PROJ-99", "Summary: Checkout flow\n\nDescription:\nUser can complete purchase.")
-
-    call_args = mock_client.messages.create.call_args
-    user_message = call_args.kwargs["messages"][0]["content"]
-    assert "Checkout flow" in user_message
+    user_content = mock_call.call_args.kwargs["user_content"]
+    assert "Checkout flow" in user_content
 
 
-def test_generate_matrix_handles_markdown_fences(monkeypatch):
-    """Claude sometimes wraps JSON in ```json fences — must be stripped before parsing."""
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
-    with patch("src.matrix_generator.anthropic.Anthropic", return_value=_make_mock_client(wrap_in_fences=True)):
+def test_generate_matrix_handles_markdown_fences():
+    with patch("src.matrix_generator.call_model", return_value=_fake_call_model(wrap_in_fences=True)):
         matrix = generate_matrix("PROJ-1", TICKET_TEXT)
-
     assert len(matrix.test_cases) == 3

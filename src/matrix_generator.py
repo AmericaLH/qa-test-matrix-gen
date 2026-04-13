@@ -1,13 +1,10 @@
 import json
-import os
-import anthropic
 from dotenv import load_dotenv
 
+from .ai_client import call_model
 from .models import TestCase, TestMatrix
 
 load_dotenv()
-
-MODEL = "claude-sonnet-4-6"
 
 SYSTEM_PROMPT = """You are a senior QA engineer. Given a Jira ticket, you generate a comprehensive test matrix.
 
@@ -39,38 +36,26 @@ Return ONLY valid JSON matching this schema (no markdown fences):
 
 
 def generate_matrix(ticket_key: str, ticket_text: str) -> TestMatrix:
-    """Call Claude to produce a test matrix from a Jira ticket's text."""
-    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-
-    message = client.messages.create(
-        model=MODEL,
-        max_tokens=8192,
+    """Generate a test matrix from a Jira ticket using the best available model."""
+    raw = call_model(
         system=SYSTEM_PROMPT,
-        messages=[
-            {
-                "role": "user",
-                "content": f"Generate a test matrix for this Jira ticket:\n\n{ticket_text}",
-            }
-        ],
+        user_content=f"Generate a test matrix for this Jira ticket:\n\n{ticket_text}",
+        max_tokens=8192,
     )
 
-    raw = message.content[0].text.strip()
-    # Claude sometimes wraps output in ```json ... ``` despite instructions
-    if raw.startswith("```"):
-        raw = raw.split("```", 2)[1]          # drop opening fence
-        if raw.startswith("json"):
-            raw = raw[4:]                      # drop language tag
-        raw = raw.rsplit("```", 1)[0].strip()  # drop closing fence
+    raw = _strip_fences(raw)
     data = json.loads(raw)
-
     test_cases = [TestCase(**tc) for tc in data["test_cases"]]
 
-    # Parse ticket summary from the first line ("Summary: ...")
-    summary_line = ticket_text.splitlines()[0]
-    summary = summary_line.replace("Summary: ", "").strip()
+    summary = ticket_text.splitlines()[0].replace("Summary: ", "").strip()
+    return TestMatrix(ticket_key=ticket_key, ticket_summary=summary, test_cases=test_cases)
 
-    return TestMatrix(
-        ticket_key=ticket_key,
-        ticket_summary=summary,
-        test_cases=test_cases,
-    )
+
+def _strip_fences(text: str) -> str:
+    text = text.strip()
+    if text.startswith("```"):
+        text = text.split("```", 2)[1]
+        if text.startswith("json"):
+            text = text[4:]
+        text = text.rsplit("```", 1)[0].strip()
+    return text

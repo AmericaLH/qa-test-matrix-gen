@@ -1,13 +1,10 @@
 import json
-import os
-import anthropic
 from dotenv import load_dotenv
 
+from .ai_client import call_model
 from .models import Checklist
 
 load_dotenv()
-
-MODEL = "claude-sonnet-4-6"
 
 SYSTEM_PROMPT = """You are a senior QA engineer. Given a Jira ticket, generate a concise test checklist.
 
@@ -29,22 +26,14 @@ Return ONLY valid JSON (no markdown fences):
 
 
 def generate_checklist(ticket_key: str, ticket_text: str) -> Checklist:
-    """Call Claude to produce a flat checklist from a Jira ticket's text."""
-    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-
-    message = client.messages.create(
-        model=MODEL,
-        max_tokens=1024,
+    """Generate a flat checklist from a Jira ticket using the best available model."""
+    raw = call_model(
         system=SYSTEM_PROMPT,
-        messages=[
-            {
-                "role": "user",
-                "content": f"Generate a test checklist for this Jira ticket:\n\n{ticket_text}",
-            }
-        ],
+        user_content=f"Generate a test checklist for this Jira ticket:\n\n{ticket_text}",
+        max_tokens=1024,
     )
 
-    raw = message.content[0].text.strip()
+    raw = raw.strip()
     if raw.startswith("```"):
         raw = raw.split("```", 2)[1]
         if raw.startswith("json"):
@@ -52,12 +41,6 @@ def generate_checklist(ticket_key: str, ticket_text: str) -> Checklist:
         raw = raw.rsplit("```", 1)[0].strip()
 
     data = json.loads(raw)
+    summary = ticket_text.splitlines()[0].replace("Summary: ", "").strip()
 
-    summary_line = ticket_text.splitlines()[0]
-    summary = summary_line.replace("Summary: ", "").strip()
-
-    return Checklist(
-        ticket_key=ticket_key,
-        ticket_summary=summary,
-        items=data["items"],
-    )
+    return Checklist(ticket_key=ticket_key, ticket_summary=summary, items=data["items"])

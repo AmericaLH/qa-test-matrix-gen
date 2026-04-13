@@ -18,6 +18,8 @@
 | 2026-04-13 | Add Anthropic API rate limit error handling | Claude Code | "Show a helpful terminal message when the Anthropic rate limit is hit, including when I can retry, parsed from the response headers" | `_retry_message` helper and `_handle_anthropic_errors` decorator in `cli.py`, covers RateLimitError, AuthenticationError, and generic APIError | Added 7 tests covering seconds/minutes/hours/header-fallback/no-info scenarios | ~25 min |
 | 2026-04-13 | Update README with all commands and architecture | Claude Code | "Update README to document the checklist command, both output folders, and the correct architecture diagram" | README updated: title, why section, usage section with generate/checklist/export, architecture tree, known limitations | Removed reference to sql_fixtures.py which was never created | ~15 min |
 
+| 2026-04-13 | Add Ollama fallback when Anthropic rate limit is hit | Claude Code | "When the Anthropic API key hits the free tier limit, automatically fall back to a local Ollama model so work is not blocked" | New `ai_client.py` routing layer: tries Anthropic first, falls back to Ollama on RateLimitError with a stderr warning and retry hint | Had to fix mock patch targets — `from .ai_client import call_model` requires patching at the import site, not the source module | ~30 min |
+
 <!--
 Continue adding entries as you work on the project.
 Each time you use an AI tool for something meaningful — add a row.
