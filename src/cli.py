@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import anthropic
 import click
 from dotenv import load_dotenv
 
@@ -9,6 +10,68 @@ from .checklist_generator import generate_checklist
 from .xray_exporter import export_to_xray
 
 load_dotenv()
+
+
+def _retry_message(exc: anthropic.RateLimitError) -> str:
+    """Parse retry timing from the error headers and return a human-readable hint."""
+    headers = getattr(exc.response, "headers", {})
+
+    # retry-after is in seconds
+    retry_after = headers.get("retry-after")
+    if retry_after:
+        try:
+            secs = int(float(retry_after))
+            if secs < 60:
+                when = f"in ~{secs} seconds"
+            elif secs < 3600:
+                when = f"in ~{secs // 60} minute(s)"
+            else:
+                when = f"in ~{secs // 3600} hour(s)"
+            return f"You can retry {when}."
+        except ValueError:
+            return f"You can retry after: {retry_after}."
+
+    # fallback: show reset timestamps if available
+    reset_req = headers.get("x-ratelimit-reset-requests")
+    reset_tok = headers.get("x-ratelimit-reset-tokens")
+    if reset_req or reset_tok:
+        parts = []
+        if reset_req:
+            parts.append(f"request limit resets at {reset_req}")
+        if reset_tok:
+            parts.append(f"token limit resets at {reset_tok}")
+        return "You can retry when " + " and ".join(parts) + "."
+
+    return "Check your usage at https://console.anthropic.com/settings/limits"
+
+
+def _handle_anthropic_errors(fn):
+    """Decorator that catches Anthropic API errors and prints a friendly message."""
+    import functools
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except anthropic.RateLimitError as exc:
+            retry_hint = _retry_message(exc)
+            raise click.ClickException(
+                f"\nAnthropic API rate limit reached.\n"
+                f"{retry_hint}\n"
+                f"Tip: the --from-file option never calls the API — "
+                f"use it to test while you wait."
+            ) from exc
+        except anthropic.AuthenticationError:
+            raise click.ClickException(
+                "Anthropic API key is invalid or missing.\n"
+                "Check ANTHROPIC_API_KEY in your .env file."
+            )
+        except anthropic.APIError as exc:
+            raise click.ClickException(
+                f"Anthropic API error ({exc.status_code}): {exc.message}"
+            ) from exc
+
+    return wrapper
 
 
 @click.group()
@@ -41,7 +104,7 @@ def generate(ticket: str | None, from_file: str | None, output_dir: str):
         text = jira.extract_text(raw)
 
     click.echo("Generating test matrix with Claude...")
-    matrix = generate_matrix(ticket, text)
+    matrix = _handle_anthropic_errors(generate_matrix)(ticket, text)
 
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -82,7 +145,7 @@ def checklist(ticket: str | None, from_file: str | None, output_dir: str):
         text = jira.extract_text(raw)
 
     click.echo("Generating checklist with Claude...")
-    result = generate_checklist(ticket, text)
+    result = _handle_anthropic_errors(generate_checklist)(ticket, text)
 
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
