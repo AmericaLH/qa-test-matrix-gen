@@ -38,6 +38,39 @@ def test_extract_text_includes_summary(monkeypatch):
     assert "Remember me" in text
 
 
+def test_extract_text_includes_acceptance_criteria(monkeypatch):
+    monkeypatch.setenv("JIRA_BASE_URL", "https://example.atlassian.net")
+    monkeypatch.setenv("JIRA_EMAIL", "test@example.com")
+    monkeypatch.setenv("JIRA_API_TOKEN", "token123")
+
+    client = JiraClient()
+    text = client.extract_text(SAMPLE_TICKET)
+    assert "Acceptance Criteria" in text
+    assert "session cookie expires in 30 days" in text
+
+
+def test_parse_ticket_acceptance_criteria_list(monkeypatch):
+    monkeypatch.setenv("JIRA_BASE_URL", "https://example.atlassian.net")
+    monkeypatch.setenv("JIRA_EMAIL", "test@example.com")
+    monkeypatch.setenv("JIRA_API_TOKEN", "token123")
+
+    client = JiraClient()
+    parsed = client.parse_ticket(SAMPLE_TICKET)
+    assert len(parsed.acceptance_criteria) == 6
+    assert parsed.acceptance_criteria[0] == "Checkbox is visible and labeled 'Remember me' on the login page"
+
+
+def test_parse_ticket_missing_acceptance_criteria(monkeypatch):
+    monkeypatch.setenv("JIRA_BASE_URL", "https://example.atlassian.net")
+    monkeypatch.setenv("JIRA_EMAIL", "test@example.com")
+    monkeypatch.setenv("JIRA_API_TOKEN", "token123")
+
+    ticket_without_ac = {"key": "DEMO-1", "fields": {"summary": "Simple task"}}
+    client = JiraClient()
+    parsed = client.parse_ticket(ticket_without_ac)
+    assert parsed.acceptance_criteria == []
+
+
 def test_get_ticket_returns_json(monkeypatch, httpx_mock: HTTPXMock):
     monkeypatch.setenv("JIRA_BASE_URL", "https://example.atlassian.net")
     monkeypatch.setenv("JIRA_EMAIL", "test@example.com")

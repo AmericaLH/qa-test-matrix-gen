@@ -8,6 +8,8 @@ load_dotenv()
 
 SYSTEM_PROMPT = """You are a senior QA engineer. Given a Jira ticket, you generate a comprehensive test matrix.
 
+When "Acceptance Criteria" are provided, each criterion MUST be covered by at least one test case. Use them to anchor the happy-path and negative scenarios.
+
 For each test case, produce:
 - id: sequential string like "TC-001"
 - title: short, descriptive

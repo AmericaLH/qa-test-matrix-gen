@@ -16,6 +16,14 @@
           ]
         }
       ]
-    }
+    },
+    "customfield_acceptance_criteria": [
+      "Checkbox is visible and labeled 'Remember me' on the login page",
+      "When checked and login succeeds, session cookie expires in 30 days",
+      "When unchecked, session expires on browser close (default behavior)",
+      "Checkbox state is NOT persisted across visits",
+      "Checkbox is keyboard-accessible and has a visible focus indicator",
+      "Checking the box does not affect failed login attempts"
+    ]
   }
 }

@@ -8,6 +8,8 @@ load_dotenv()
 
 SYSTEM_PROMPT = """You are a senior QA engineer. Given a Jira ticket, generate a concise test checklist.
 
+When "Acceptance Criteria" are provided, every criterion MUST map to at least one checklist item.
+
 Each item must be:
 - A single, self-contained test check written as an action to verify
 - Short enough to read at a glance (one line)

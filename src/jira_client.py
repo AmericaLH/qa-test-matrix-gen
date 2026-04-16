@@ -2,6 +2,8 @@ import os
 import httpx
 from dotenv import load_dotenv
 
+from .models import JiraTicket
+
 load_dotenv()
 
 
@@ -20,19 +22,35 @@ class JiraClient:
         response.raise_for_status()
         return response.json()
 
-    def extract_text(self, ticket: dict) -> str:
-        """Pull summary + description text from a Jira issue dict."""
-        fields = ticket.get("fields", {})
+    def parse_ticket(self, raw: dict) -> JiraTicket:
+        """Normalize a raw Jira API response into a JiraTicket model."""
+        fields = raw.get("fields", {})
         summary = fields.get("summary", "")
         description = _adf_to_text(fields.get("description") or {})
-        acceptance = _adf_to_text(
-            fields.get("customfield_acceptance_criteria") or {}
+
+        raw_ac = fields.get("customfield_acceptance_criteria") or []
+        if isinstance(raw_ac, list):
+            acceptance_criteria = [str(item) for item in raw_ac if item]
+        else:
+            ac_text = _adf_to_text(raw_ac)
+            acceptance_criteria = [line.lstrip("- ").strip() for line in ac_text.splitlines() if line.strip()]
+
+        return JiraTicket(
+            key=raw.get("key", ""),
+            summary=summary,
+            description=description,
+            acceptance_criteria=acceptance_criteria,
         )
-        parts = [f"Summary: {summary}"]
-        if description:
-            parts.append(f"Description:\n{description}")
-        if acceptance:
-            parts.append(f"Acceptance Criteria:\n{acceptance}")
+
+    def extract_text(self, ticket: dict) -> str:
+        """Pull summary + description + acceptance criteria from a Jira issue dict."""
+        parsed = self.parse_ticket(ticket)
+        parts = [f"Summary: {parsed.summary}"]
+        if parsed.description:
+            parts.append(f"Description:\n{parsed.description}")
+        if parsed.acceptance_criteria:
+            ac_lines = "\n".join(f"- {item}" for item in parsed.acceptance_criteria)
+            parts.append(f"Acceptance Criteria:\n{ac_lines}")
         return "\n\n".join(parts)
 
 

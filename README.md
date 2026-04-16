@@ -119,6 +119,8 @@ python -m src.cli generate --from-file tests/fixtures/sample_ticket.json
 
 Output is saved to `test_cases/PROJECT-123.json`.
 
+> **Tip — use acceptance criteria for better results.** Add a `customfield_acceptance_criteria` array to your fixture and the AI will ensure every criterion is covered by at least one test case. See [Fixture Format](#fixture-format) below.
+
 **Automation candidates only** — filter out low-impact and manual-only test cases:
 ```bash
 python -m src.cli generate --ticket PROJECT-123 --automatable
@@ -172,6 +174,45 @@ python -m src.cli checklist --from-file tests/fixtures/sample_ticket.json --auto
 
 Output is saved to `checklists/PROJECT-123-automatable.txt`.
 
+---
+
+## Fixture Format
+
+Local fixture files mirror the Jira REST API v3 response shape. The minimal required fields are `key` and `fields.summary`. Add `fields.customfield_acceptance_criteria` as a flat list of strings to give the AI explicit acceptance criteria to anchor test generation against — each criterion will be covered by at least one test case.
+
+```json
+{
+  "key": "PROJECT-123",
+  "fields": {
+    "summary": "Login form: add 'Remember me' checkbox",
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [{ "type": "text", "text": "As a user, I want a 'Remember me' checkbox..." }]
+        }
+      ]
+    },
+    "customfield_acceptance_criteria": [
+      "Checkbox is visible and labeled 'Remember me' on the login page",
+      "When checked and login succeeds, session cookie expires in 30 days",
+      "When unchecked, session expires on browser close (default behavior)",
+      "Checkbox state is NOT persisted across visits",
+      "Checkbox is keyboard-accessible and has a visible focus indicator",
+      "Checking the box does not affect failed login attempts"
+    ]
+  }
+}
+```
+
+`jira_client.py` handles both this flat-list format and the legacy ADF dict format — whichever your Jira instance uses will work.
+
+The `sample_ticket.json` in `tests/fixtures/` is a ready-to-use example you can copy and modify.
+
+---
+
 ### Export a test matrix to Xray
 
 ```bash
@@ -193,7 +234,7 @@ qa-test-matrix-gen/
 │   ├── checklist_generator.py # Builds flat Jira checklist via AI
 │   ├── jira_client.py         # Jira REST API v3 wrapper
 │   ├── xray_exporter.py       # Xray Cloud API export
-│   └── models.py              # Pydantic models: TestCase, TestMatrix, Checklist
+│   └── models.py              # Pydantic models: JiraTicket, TestCase, TestMatrix, Checklist
 ├── tests/
 │   ├── fixtures/              # Sample Jira ticket JSON for offline testing
 │   ├── test_ai_client.py      # Anthropic/Ollama fallback logic
@@ -263,7 +304,7 @@ pytest --cov=src --cov-report=term-missing
 
 ## Known Limitations
 
-- Jira ticket parsing quality depends on how well-written the acceptance criteria are
+- Output quality improves significantly when acceptance criteria are provided in the fixture — vague user stories without AC produce broader, less targeted test cases
 - Xray export uses Xray Cloud API v2; Xray Server/DC requires different endpoints
 - Ollama output quality is lower than Claude for complex tickets — review carefully
 - `glean_prompt` suggestions are generic and may need adjusting for your team's Glean structure

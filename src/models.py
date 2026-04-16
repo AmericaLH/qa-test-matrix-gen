@@ -2,6 +2,13 @@ from enum import Enum
 from pydantic import BaseModel
 
 
+class JiraTicket(BaseModel):
+    key: str
+    summary: str
+    description: str = ""
+    acceptance_criteria: list[str] = []
+
+
 class TestType(str, Enum):
     HAPPY_PATH = "happy_path"
     NEGATIVE = "negative"
